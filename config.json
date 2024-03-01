@@ -1,0 +1,8 @@
+{
+  "ClientID": "<<CLIENT_ID>>",
+  "ClientSecret": "<<CLIENT_SECRET>>",
+  "BaseUrl": "https://openapi.tuyaeu.com",
+  "deviceList":{"device1_id": "custom name device1",
+              "device2_id": "custom name device2",
+              "device3_id": "custom name device3"}
+  }
