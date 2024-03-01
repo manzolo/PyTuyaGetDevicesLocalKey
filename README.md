@@ -27,3 +27,12 @@
 
 ```bash
 python app.py
+```
+
+### Output:
+```
+2f73bb2ed4a2ee6099csmk	Fm2;'3sv54feYi`R	Main lamp
+g573bb2ed4a2aa6099csmd	=a3ZelaoW4D/`xH~	Secondary switch
+we73bb2ed4a2ee6099cuyk	f!densw-swbtq.h4	Night lamp
+```
+
