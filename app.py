@@ -77,7 +77,11 @@ def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime,
 # Set debug value to True or False to (de)activate output
 debug = True
 
-with open("config.json", "r") as jsonfile:
+# Verifica se esiste il file config.secret.json, altrimenti usa config.json
+config_file = "config.secret.json" if os.path.exists("config.secret.json") else "config.json"
+
+# Leggi il file di configurazione
+with open(config_file, "r") as jsonfile:
     configData = json.load(jsonfile)
     if debug:
         print("Read successful")
