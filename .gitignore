@@ -3,3 +3,4 @@ config.json
 .idea
 redis_data/*
 !redis_data/.gitkeep
+/redis_dump.json
