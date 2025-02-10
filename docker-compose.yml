@@ -7,22 +7,43 @@ services:
     volumes:
       - ./redis_data:/data
 
-  app:
+  cli:
     build: .
-    container_name: py-tuya-localkey-extractor-app
+    container_name: py-tuya-localkey-extractor-cli
     depends_on:
       - redis
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    command: python app.py
+    command: python api.py --print
 
-  dump_redis:
+  cli-cache:
     build: .
-    container_name: py-tuya-localkey-extractor-dump-redis
+    container_name: py-tuya-localkey-extractor-cli-cache
     depends_on:
       - redis
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    command: python dump_redis.py
+    command: python api.py --cache --print
+  api:
+    build: .
+    container_name: py-tuya-localkey-extractor-api
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "5005:80"
+    command: python server.py
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: py-tuya-localkey-extractor-frontend
+    depends_on:
+      - redis
+    ports:
+      - "5000:80"

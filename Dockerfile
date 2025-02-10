@@ -6,13 +6,10 @@ WORKDIR /app
 
 # Copia i file necessari
 COPY ./requirements.txt .
-COPY ./app.py .
-COPY ./dump_redis.py .
+COPY api.py .
+COPY ./server.py .
 # Copia config.json solo se esiste
 COPY ./config* .
 
 # Installa le dipendenze
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Comando di avvio
-CMD ["python", "app.py"]

@@ -1,6 +1,8 @@
-docker compose up redis app --build
-docker compose up dump_redis --build
+docker compose up redis api --build
+docker compose up cli --build
+docker compose up api --build
+
+docker compose up frontend --build
+
 docker compose down
 docker compose rf -f
-
-

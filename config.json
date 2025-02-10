@@ -2,7 +2,8 @@
   "ClientID": "<<CLIENT_ID>>",
   "ClientSecret": "<<CLIENT_SECRET>>",
   "BaseUrl": "https://openapi.tuyaeu.com",
-  "deviceList":{"device1_id": "custom name device1",
-              "device2_id": "custom name device2",
-              "device3_id": "custom name device3"}
+  "Debug" :"True",
+  "deviceList":{"device1_id": {"friendly_name":"custom name device1","private_ip": "192.168.1.254", "mac_address": "AA:BB:CC:DD:EE:FF"},
+              "device2_id": {"optional_key":"optional value for device1"},
+              "device3_id": {}}
   }
