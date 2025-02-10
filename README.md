@@ -1,13 +1,13 @@
-Tuya Device Info Bulk
+# Tuya Device Info Bulk
 This project allows you to retrieve and manage information about Tuya devices. It supports two modes of operation:
-    Command Line Interface (CLI) Mode: A fast and simple way to retrieve device information directly from the command line.
-    Flask + Docker Mode: A more robust and production-ready setup using Flask as a web server and Docker for containerization.
+* Command Line Interface (CLI) Mode: A fast and simple way to retrieve device information directly from the command line.
+* Flask + Docker Mode: A more robust and production-ready setup using Flask as a web server and Docker for containerization.
 
 # Getting Started
 Prerequisites
-    Python 3.9 or higher
-    Redis (optional, for caching device information)
-    Docker (optional, for Flask + Docker mode)
+* Python 3.9 or higher
+* Redis (optional, for caching device information)
+* Docker (optional, for Flask + Docker mode)
 
 ## Usage
 
@@ -83,7 +83,7 @@ Navigate to http://localhost:5000
 ```bash
 curl http://localhost:5005/api/get_devices
 ```
-Aggiorna le informazioni dei dispositivi:
+Update devices informations:
 ```bash
 curl -X POST http://localhost:5005/api/update_devices
 ```
