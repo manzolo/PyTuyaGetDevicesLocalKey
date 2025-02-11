@@ -1,5 +1,5 @@
 # Usa un'immagine base di Python
-FROM python:3.12-slim
+FROM python:3.12.9-alpine3.21
 
 # Imposta la directory di lavoro
 WORKDIR /app
