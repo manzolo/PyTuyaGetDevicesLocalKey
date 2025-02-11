@@ -3,6 +3,10 @@ This project allows you to retrieve and manage information about Tuya devices. I
 * Command Line Interface (CLI) Mode: A fast and simple way to retrieve device information directly from the command line.
 * Flask + Docker Mode: A more robust and production-ready setup using Flask as a web server and Docker for containerization.
 
+# Frontend screenshot
+![immagine](https://github.com/user-attachments/assets/c4000772-1ff3-4395-a37c-c6d9c6c59654)
+
+
 # Getting Started
 Prerequisites
 * Python 3.9 or higher
@@ -114,4 +118,3 @@ docker compose down
 ```bash
 docker compose down --rmi all
 ```
-
