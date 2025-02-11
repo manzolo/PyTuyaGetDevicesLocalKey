@@ -1,20 +1,101 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ClipLoader } from "react-spinners";
+
+// Componente per il messaggio di errore
+const ErrorMessage = ({ message, onClose }) => {
+  return (
+    <div id="alert-border-2" className="flex items-center p-4 mb-4 text-red-800 border-t-4 border-red-300 bg-red-50 dark:text-red-400 dark:bg-gray-800 dark:border-red-800" role="alert">
+      <svg className="shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+      </svg>
+      <div className="ms-3 text-sm font-medium">
+        {message}
+      </div>
+      <button
+        type="button"
+        className="ms-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-gray-700"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        <span className="sr-only">Dismiss</span>
+        <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+        </svg>
+      </button>
+    </div>
+  );
+};
+// Componente per il messaggio di errore
+const InfoMessage = ({ message, onClose }) => {
+  return (
+    <div id="alert-border-1" class="flex items-center p-4 mb-4 text-blue-800 border-t-4 border-blue-300 bg-blue-50 dark:text-blue-400 dark:bg-gray-800 dark:border-blue-800" role="alert">
+        <svg class="shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <div class="ms-3 text-sm font-medium">
+        {message}
+      </div>
+      <button
+        type="button"
+        className="ms-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-gray-700"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        <span className="sr-only">Dismiss</span>
+        <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+        </svg>
+      </button>
+    </div>
+  );
+};
 
 function App() {
   const [devices, setDevices] = useState({});
   const [loading, setLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [filterText, setFilterText] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+
+  // Timer per nascondere il messaggio di errore
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage('');
+      }, 5000); // Nasconde il messaggio dopo 5 secondi
+
+      return () => clearTimeout(timer); // Pulisci il timer se il componente viene smontato o se cambia il messaggio
+    }
+  }, [errorMessage]);
+  
+  // Timer per nascondere il messaggio di errore
+  useEffect(() => {
+    if (infoMessage) {
+      const timer = setTimeout(() => {
+        setInfoMessage('');
+      }, 2000); // Nasconde il messaggio dopo 5 secondi
+
+      return () => clearTimeout(timer); // Pulisci il timer se il componente viene smontato o se cambia il messaggio
+    }
+  }, [infoMessage]);
 
   const fetchDevices = async () => {
     setLoading(true);
     try {
+      setErrorMessage("");
       const response = await axios.get("http://localhost:5005/api/get_devices");
       setDevices(response.data);
     } catch (error) {
       console.error("Error retrieve devices info:", error);
+      if (error.response) {
+        setErrorMessage("Error retrieve devices info: " + error.response.data.error);
+      } else if (error.request) {
+        setErrorMessage("No response received: " + error.message);
+      } else {
+        setErrorMessage("Error: " + error.message);
+      }
     }
     setLoading(false);
   };
@@ -22,11 +103,18 @@ function App() {
   const updateDevices = async () => {
     setLoading(true);
     try {
+      setErrorMessage("");
       await axios.post("http://localhost:5005/api/update_devices");
-      alert("Aggiornamento avviato!");
+      setInfoMessage("Aggiornamento avviato!")
     } catch (error) {
       console.error("Error on sync:", error);
-      alert("Error on sync.");
+      if (error.response) {
+        setErrorMessage("Error on sync: " + error.response.data.error);
+      } else if (error.request) {
+        setErrorMessage("No response received: " + error.message);
+      } else {
+        setErrorMessage("Error: " + error.message);
+      }
     }
     setLoading(false);
   };
@@ -40,30 +128,20 @@ function App() {
   };
 
   const sortedDevices = Object.entries(devices).sort((a, b) => {
-  const [idA, dataA] = a;
-  const [idB, dataB] = b;
+    const [idA, dataA] = a;
+    const [idB, dataB] = b;
 
-  if (sortConfig.key === 'id') {
-    // Ordina per ID
-    if (idA < idB) {
-      return sortConfig.direction === 'asc' ? -1 : 1;
-    }
-    if (idA > idB) {
-      return sortConfig.direction === 'asc' ? 1 : -1;
+    if (sortConfig.key === 'id') {
+      if (idA < idB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (idA > idB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    } else if (sortConfig.key) {
+      const valueA = dataA[sortConfig.key] || '';
+      const valueB = dataB[sortConfig.key] || '';
+      if (valueA < valueB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortConfig.direction === 'asc' ? 1 : -1;
     }
     return 0;
-  } else if (sortConfig.key) {
-    // Ordina per altre colonne
-    const valueA = dataA[sortConfig.key] || '';
-    const valueB = dataB[sortConfig.key] || '';
-    if (valueA < valueB) {
-      return sortConfig.direction === 'asc' ? -1 : 1;
-    }
-    if (valueA > valueB) {
-      return sortConfig.direction === 'asc' ? 1 : -1;
-    }
-  }
-  return 0;
   });
 
   const filteredDevices = sortedDevices.filter(([id, data]) => {
@@ -105,6 +183,14 @@ function App() {
           <ClipLoader color="#3B82F6" size={35} />
           <p className="ml-3 text-gray-600">Loading...</p>
         </div>
+      )}
+
+      {errorMessage && (
+        <ErrorMessage message={errorMessage} onClose={() => setErrorMessage('')} />
+      )}
+      
+      {infoMessage && (
+        <InfoMessage message={infoMessage} onClose={() => setInfoMessage('')} />
       )}
 
       {Object.keys(devices).length > 0 && (
