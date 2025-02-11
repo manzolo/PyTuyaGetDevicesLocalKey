@@ -1,4 +1,17 @@
 services:
+  # Servizio per costruire l'immagine
+  tuya-localkey-extractor-backend-image-builder:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-backend:latest
+
+  tuya-localkey-extractor-frontend-image-builder:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-frontend:latest
+    
   redis:
     image: redis:latest
     container_name: tuya-localkey-extractor-redis
@@ -8,9 +21,7 @@ services:
       - ./redis_data:/data
 
   cli:
-    build:
-      context: backend
-      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-cli
     depends_on:
       - redis
@@ -20,9 +31,7 @@ services:
     command: python api.py --print
 
   cli-cache:
-    build:
-      context: backend
-      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-cli-cache
     depends_on:
       - redis
@@ -31,9 +40,7 @@ services:
       - REDIS_PORT=6379
     command: python api.py --cache --print
   api:
-    build:
-      context: backend
-      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-api
     depends_on:
       - redis
@@ -45,9 +52,7 @@ services:
     command: python server.py
 
   frontend:
-    build:
-      context: frontend
-      dockerfile: Dockerfile
+    image: tuya-localkey-extractor-frontend:latest
     container_name: py-tuya-localkey-extractor-frontend
     depends_on:
       - redis

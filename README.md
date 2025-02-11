@@ -74,7 +74,10 @@ Device g573bb2ed4a2aa6099csmd:
 # Docker compose
 
 ```
-docker compose up frontend api --build
+docker compose build tuya-localkey-extractor-backend-image-builder
+docker compose build tuya-localkey-extractor-frontend-image-builder
+docker compose up api frontend
+
 ```
 ## Frontend
 Navigate to http://localhost:5000
@@ -91,13 +94,13 @@ curl -X POST http://localhost:5005/api/update_devices
 ## cli
 
 ```bash
-docker compose up cli --build
+docker compose up cli
 ```
 
 ## cli-cache (from redis)
 
 ```bash
-docker compose up cli-cache --build
+docker compose up cli-cache
 ```
 
 ## turn off
@@ -105,3 +108,10 @@ docker compose up cli-cache --build
 ```bash
 docker compose down
 ```
+
+## remove all images
+
+```bash
+docker compose down --rmi all
+```
+
