@@ -32,15 +32,26 @@ def get_devices():
 @app.route("/api/update_devices", methods=["POST"])
 #@cross_origin()
 def update_devices():
-    redis_client = connect_to_redis()
-    if not redis_client:
-        return jsonify({"error": "Redis non disponibile"}), 500
+    try:
+        redis_client = connect_to_redis()
+        if not redis_client:
+            return jsonify({"error": "Redis non disponibile"}), 500
 
-    tuyatime = str(int(time.time()) * 1000)
-    access_token = get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, False)
-    get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, False)
+        tuyatime = str(int(time.time()) * 1000)
 
-    return jsonify({"message": "Aggiornamento completato"}), 200
+        # Chiamata a get_device_info con gestione degli errori
+        try:
+            access_token = get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, DEBUG)
+            get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, DEBUG)
+        except Exception as e:
+            print(f"Errore durante l'aggiornamento dei dispositivi: {e}")
+            return jsonify({"error": str(e)}), 500
+
+        return jsonify({"message": "Update complete"}), 200
+
+    except Exception as e:
+        print(f"Errore generico in update_devices: {e}")
+        return jsonify({"error": str(e)}), 500
 
 configData = load_config()
 ClientID = configData["ClientID"]

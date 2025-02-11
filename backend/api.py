@@ -14,49 +14,15 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, debug=False):
-    URL = "/v1.0/token?grant_type=1"
-    StringToSign = f"{ClientID}{tuyatime}GET\n{EmptyBodyEncoded}\n\n{URL}"
-    if debug:
-        print("StringToSign is now", StringToSign)
-
-    AccessTokenSign = hmac.new(ClientSecret.encode(), StringToSign.encode(), hashlib.sha256).hexdigest().upper()
-    if debug:
-        print("AccessTokenSign is now", AccessTokenSign)
-
-    headers = {
-        "sign_method": "HMAC-SHA256",
-        "client_id": ClientID,
-        "t": tuyatime,
-        "mode": "cors",
-        "Content-Type": "application/json",
-        "sign": AccessTokenSign
-    }
-
-    AccessTokenResponse = requests.get(BaseUrl + URL, headers=headers).json()
-    if debug:
-        print("AccessTokenResponse is now", AccessTokenResponse)
-
-    AccessToken = AccessTokenResponse.get("result", {}).get("access_token")
-    if debug:
-        print("Access token is now", AccessToken)
-
-    return AccessToken
-
-def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, AccessToken, deviceList, redis_client, debug=False, print_results=False):
-    device_ids = list(deviceList.keys())
-    chunk_size = 20
-    chunks = [device_ids[i:i + chunk_size] for i in range(0, len(device_ids), chunk_size)]
-
-    for chunk in chunks:
-        device_ids_str = ",".join(chunk)
-        URL = f"/v2.0/cloud/thing/batch?device_ids={device_ids_str}"
-        StringToSign = f"{ClientID}{AccessToken}{tuyatime}GET\n{EmptyBodyEncoded}\n\n{URL}"
+    try:
+        URL = "/v1.0/token?grant_type=1"
+        StringToSign = f"{ClientID}{tuyatime}GET\n{EmptyBodyEncoded}\n\n{URL}"
         if debug:
             print("StringToSign is now", StringToSign)
 
-        RequestSign = hmac.new(ClientSecret.encode(), StringToSign.encode(), hashlib.sha256).hexdigest().upper()
+        AccessTokenSign = hmac.new(ClientSecret.encode(), StringToSign.encode(), hashlib.sha256).hexdigest().upper()
         if debug:
-            print("RequestSign is now", RequestSign)
+            print("AccessTokenSign is now", AccessTokenSign)
 
         headers = {
             "sign_method": "HMAC-SHA256",
@@ -64,57 +30,164 @@ def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime,
             "t": tuyatime,
             "mode": "cors",
             "Content-Type": "application/json",
-            "sign": RequestSign,
-            "access_token": AccessToken
+            "sign": AccessTokenSign
         }
 
-        RequestResponse = requests.get(BaseUrl + URL, headers=headers).json()
+        # Effettua la richiesta GET
+        response = requests.get(BaseUrl + URL, headers=headers)
+        response.raise_for_status()  # Solleva un'eccezione per codici di stato HTTP non 2xx
+
+        # Parsing della risposta JSON
+        AccessTokenResponse = response.json()
         if debug:
-            print("RequestResponse is now", RequestResponse)
+            print("AccessTokenResponse is now", AccessTokenResponse)
 
-        devices_info = RequestResponse.get("result", [])
-        for device_info in devices_info:
-            id = device_info.get("id")
-            localKey = device_info.get("local_key")
-            customName = device_info.get("custom_name")
-            ip = device_info.get("ip")
-            is_online = str(device_info.get("is_online"))
-            model = device_info.get("model")
-            name = device_info.get("name")
-            product_id = device_info.get("product_id")
-            private_ip = deviceList.get(id, {}).get("private_ip", "N/A")
-            mac_address = deviceList.get(id, {}).get("mac_address", "N/A")
-            last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Verifica se la risposta indica un errore
+        if not AccessTokenResponse.get("success", False):
+            error_code = AccessTokenResponse.get("code")
+            error_msg = AccessTokenResponse.get("msg")
+            raise ValueError(f"Errore API Tuya: Code {error_code}, Message: {error_msg}")
 
-            if redis_client:
-                redis_client.hset(f"{id}", mapping={
-                    "local_key": localKey,
-                    "custom_name": customName,
-                    "ip": ip,
-                    "is_online": is_online,
-                    "model": model,
-                    "name": name,
-                    "product_id": product_id,
-                    "private_ip": private_ip,
-                    "mac_address": mac_address,
-                    "last_updated": last_updated
-                })
-                if debug:
-                    print(f"Dispositivo {id} salvato in Redis.")
+        # Estrai l'access token dalla risposta
+        AccessToken = AccessTokenResponse.get("result", {}).get("access_token")
+        if debug:
+            print("Access token is now", AccessToken)
 
-            if print_results:
-                print(f"Device {id}:")
-                print(f"  Local Key: {localKey}")
-                print(f"  Custom Name: {customName}")
-                print(f"  IP: {ip}")
-                print(f"  Online: {is_online}")
-                print(f"  Model: {model}")
-                print(f"  Name: {name}")
-                print(f"  Product ID: {product_id}")
-                print(f"  Private IP: {private_ip}")
-                print(f"  MAC Address: {mac_address}")
-                print(f"  Last Updated: {last_updated}")
-                print("-" * 40)
+        if not AccessToken:
+            raise ValueError("Access token non found on response")
+
+        return AccessToken
+
+    except requests.exceptions.HTTPError as http_error:
+        # Gestione degli errori HTTP (4xx, 5xx)
+        print(f"Errore HTTP durante la richiesta: {http_error}")
+        print(f"Risposta del server: {http_error.response.text}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except requests.exceptions.RequestException as req_error:
+        # Gestione degli errori di rete o di configurazione della richiesta
+        print(f"Errore durante la richiesta: {req_error}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except ValueError as val_error:
+        # Gestione degli errori di parsing o dati mancanti
+        print(f"Errore nei dati della risposta: {val_error}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except Exception as e:
+        # Gestione di altri errori imprevisti
+        print(f"Errore imprevisto: {e}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, AccessToken, deviceList, redis_client, debug=False, print_results=False):
+    try:
+        device_ids = list(deviceList.keys())
+        chunk_size = 20
+        chunks = [device_ids[i:i + chunk_size] for i in range(0, len(device_ids), chunk_size)]
+
+        for chunk in chunks:
+            device_ids_str = ",".join(chunk)
+            URL = f"/v2.0/cloud/thing/batch?device_ids={device_ids_str}"
+            StringToSign = f"{ClientID}{AccessToken}{tuyatime}GET\n{EmptyBodyEncoded}\n\n{URL}"
+            if debug:
+                print("StringToSign is now", StringToSign)
+
+            RequestSign = hmac.new(ClientSecret.encode(), StringToSign.encode(), hashlib.sha256).hexdigest().upper()
+            if debug:
+                print("RequestSign is now", RequestSign)
+
+            headers = {
+                "sign_method": "HMAC-SHA256",
+                "client_id": ClientID,
+                "t": tuyatime,
+                "mode": "cors",
+                "Content-Type": "application/json",
+                "sign": RequestSign,
+                "access_token": AccessToken
+            }
+
+            # Effettua la richiesta GET
+            response = requests.get(BaseUrl + URL, headers=headers)
+            response.raise_for_status()  # Solleva un'eccezione per codici di stato HTTP non 2xx
+            RequestResponse = response.json()
+
+            if debug:
+                print("RequestResponse is now", RequestResponse)
+
+            # Verifica se la risposta indica un errore
+            if not RequestResponse.get("success", False):
+                error_code = RequestResponse.get("code")
+                error_msg = RequestResponse.get("msg")
+                raise ValueError(f"API Tuya error: Code {error_code}, Message: {error_msg}")
+
+            # Estrai le informazioni dei dispositivi
+            devices_info = RequestResponse.get("result", [])
+            for device_info in devices_info:
+                id = device_info.get("id")
+                localKey = device_info.get("local_key")
+                customName = device_info.get("custom_name")
+                ip = device_info.get("ip")
+                is_online = str(device_info.get("is_online"))
+                model = device_info.get("model")
+                name = device_info.get("name")
+                product_id = device_info.get("product_id")
+                private_ip = deviceList.get(id, {}).get("private_ip", "N/A")
+                mac_address = deviceList.get(id, {}).get("mac_address", "N/A")
+                last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                if redis_client:
+                    try:
+                        redis_client.hset(f"{id}", mapping={
+                            "local_key": localKey,
+                            "custom_name": customName,
+                            "ip": ip,
+                            "is_online": is_online,
+                            "model": model,
+                            "name": name,
+                            "product_id": product_id,
+                            "private_ip": private_ip,
+                            "mac_address": mac_address,
+                            "last_updated": last_updated
+                        })
+                        if debug:
+                            print(f"Dispositivo {id} salvato in Redis.")
+                    except Exception as redis_error:
+                        print(f"Error on Redis save for device {id}: {redis_error}")
+
+                if print_results:
+                    print(f"Device {id}:")
+                    print(f"  Local Key: {localKey}")
+                    print(f"  Custom Name: {customName}")
+                    print(f"  IP: {ip}")
+                    print(f"  Online: {is_online}")
+                    print(f"  Model: {model}")
+                    print(f"  Name: {name}")
+                    print(f"  Product ID: {product_id}")
+                    print(f"  Private IP: {private_ip}")
+                    print(f"  MAC Address: {mac_address}")
+                    print(f"  Last Updated: {last_updated}")
+                    print("-" * 40)
+
+    except requests.exceptions.HTTPError as http_error:
+        # Gestione degli errori HTTP (4xx, 5xx)
+        print(f"HTTP error during request: {http_error}")
+        print(f"Error on server response: {http_error.response.text}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except requests.exceptions.RequestException as req_error:
+        # Gestione degli errori di rete o di configurazione della richiesta
+        print(f"Error during request: {req_error}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except ValueError as val_error:
+        # Gestione degli errori dell'API Tuya (es. success: false)
+        print(f"Error on response data: {val_error}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
+
+    except Exception as e:
+        # Gestione di altri errori imprevisti
+        print(f"Unexpected error on get_device_info: {e}")
+        raise  # Rilancia l'eccezione per gestirla a livello superiore
 
 def get_redis_cached_data(redis_client, device_id=None):
     """

@@ -64,7 +64,7 @@ function App() {
     if (errorMessage) {
       const timer = setTimeout(() => {
         setErrorMessage('');
-      }, 5000); // Nasconde il messaggio dopo 5 secondi
+      }, 10000); // Nasconde il messaggio dopo 10 secondi
 
       return () => clearTimeout(timer); // Pulisci il timer se il componente viene smontato o se cambia il messaggio
     }
@@ -100,24 +100,40 @@ function App() {
     setLoading(false);
   };
 
-  const updateDevices = async () => {
-    setLoading(true);
-    try {
-      setErrorMessage("");
-      await axios.post("/api/update_devices");
-      setInfoMessage("Aggiornamento avviato!")
-    } catch (error) {
-      console.error("Error on sync:", error);
-      if (error.response) {
-        setErrorMessage("Error on sync: " + error.response.data.error);
-      } else if (error.request) {
-        setErrorMessage("No response received: " + error.message);
-      } else {
-        setErrorMessage("Error: " + error.message);
+    const updateDevices = async () => {
+      setLoading(true); // Imposta lo stato di caricamento
+      setErrorMessage(""); // Resetta il messaggio di errore
+      setInfoMessage(""); // Resetta il messaggio informativo
+
+      try {
+        // Effettua la chiamata POST
+        const response = await axios.post("/api/update_devices");
+
+        // Verifica che la risposta sia valida
+        if (response.status === 200) {
+          setInfoMessage("Update is complete!"); // Mostra un messaggio di successo
+        } else {
+          // Se la risposta non è 200, gestisci l'errore
+          setErrorMessage("Unexpected error: " + response.statusText);
+        }
+      } catch (error) {
+        console.error("Sync error:", error);
+
+        // Gestisci diversi tipi di errori
+        if (error.response) {
+          // Errore con risposta dal server (es. 4xx, 5xx)
+          setErrorMessage("Sync error: " + error.response.data.error);
+        } else if (error.request) {
+          // Nessuna risposta ricevuta (es. problemi di rete)
+          setErrorMessage("No server response: " + error.message);
+        } else {
+          // Errore generico (es. configurazione della richiesta)
+          setErrorMessage("Error: " + error.message);
+        }
+      } finally {
+        setLoading(false); // Disattiva lo stato di caricamento
       }
-    }
-    setLoading(false);
-  };
+    };
 
   const handleSort = (key) => {
     let direction = 'asc';
