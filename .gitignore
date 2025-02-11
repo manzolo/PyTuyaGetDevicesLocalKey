@@ -4,3 +4,4 @@ redis_data/*
 backend/redis_dump.json
 .venv
 .idea
+docker-compose.override.yml
