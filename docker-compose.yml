@@ -1,17 +1,17 @@
 services:
   # Servizio per costruire l'immagine
-  tuya-localkey-extractor-backend-image-builder:
+  tuya-localkey-extractor-backend-image:
     build:
       context: backend
       dockerfile: Dockerfile
     image: tuya-localkey-extractor-backend:latest
 
-  tuya-localkey-extractor-frontend-image-builder:
+  tuya-localkey-extractor-frontend-image:
     build:
       context: frontend
       dockerfile: Dockerfile
     image: tuya-localkey-extractor-frontend:latest
-    
+
   redis:
     image: redis:latest
     container_name: tuya-localkey-extractor-redis

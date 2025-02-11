@@ -74,8 +74,8 @@ Device g573bb2ed4a2aa6099csmd:
 # Docker compose
 
 ```
-docker compose build tuya-localkey-extractor-backend-image-builder
-docker compose build tuya-localkey-extractor-frontend-image-builder
+docker compose build tuya-localkey-extractor-backend-image
+docker compose build tuya-localkey-extractor-frontend-image
 docker compose up api frontend
 
 ```
