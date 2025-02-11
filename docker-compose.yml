@@ -8,7 +8,9 @@ services:
       - ./redis_data:/data
 
   cli:
-    build: .
+    build:
+      context: backend
+      dockerfile: Dockerfile
     container_name: py-tuya-localkey-extractor-cli
     depends_on:
       - redis
@@ -18,7 +20,9 @@ services:
     command: python api.py --print
 
   cli-cache:
-    build: .
+    build:
+      context: backend
+      dockerfile: Dockerfile
     container_name: py-tuya-localkey-extractor-cli-cache
     depends_on:
       - redis
@@ -27,7 +31,9 @@ services:
       - REDIS_PORT=6379
     command: python api.py --cache --print
   api:
-    build: .
+    build:
+      context: backend
+      dockerfile: Dockerfile
     container_name: py-tuya-localkey-extractor-api
     depends_on:
       - redis

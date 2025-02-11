@@ -18,7 +18,7 @@ Prerequisites
 
 # Run the Script
 ```bash
-
+cd backend
 python3 api.py [--cache] [--print]
 
 Options:

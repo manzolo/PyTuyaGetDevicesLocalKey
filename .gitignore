@@ -1,7 +1,6 @@
-config.secret.json
-config.json
-.idea
+backend/config.secret.json
 redis_data/*
 !redis_data/.gitkeep
-/redis_dump.json
+backend/redis_dump.json
 .venv
+.idea
