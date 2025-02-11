@@ -16,6 +16,7 @@ RUN npm run build
 # Stage 2: Runtime con Nginx
 FROM nginx:alpine
 
+COPY config/nginx-reverse-proxy.conf /etc/nginx/conf.d/default.conf
 # Copia i file generati dal build nella directory di Nginx
 COPY --from=builder /app/build /usr/share/nginx/html
 

@@ -85,7 +85,7 @@ function App() {
     setLoading(true);
     try {
       setErrorMessage("");
-      const response = await axios.get("http://localhost:5005/api/get_devices");
+      const response = await axios.get("/api/get_devices");
       setDevices(response.data);
     } catch (error) {
       console.error("Error retrieve devices info:", error);
@@ -104,7 +104,7 @@ function App() {
     setLoading(true);
     try {
       setErrorMessage("");
-      await axios.post("http://localhost:5005/api/update_devices");
+      await axios.post("/api/update_devices");
       setInfoMessage("Aggiornamento avviato!")
     } catch (error) {
       console.error("Error on sync:", error);

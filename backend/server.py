@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-from flask_cors import cross_origin
+#from flask_cors import cross_origin
 from api import get_access_token, get_device_info, connect_to_redis
 import os
 import json
@@ -15,7 +15,7 @@ def load_config():
 
 # API per ottenere i dati da Redis
 @app.route("/api/get_devices", methods=["GET"])
-@cross_origin()
+#@cross_origin()
 def get_devices():
     redis_client = connect_to_redis()
     if not redis_client:
@@ -30,7 +30,7 @@ def get_devices():
 
 # API per aggiornare i dispositivi Tuya
 @app.route("/api/update_devices", methods=["POST"])
-@cross_origin()
+#@cross_origin()
 def update_devices():
     redis_client = connect_to_redis()
     if not redis_client:
