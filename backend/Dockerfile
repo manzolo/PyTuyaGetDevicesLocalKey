@@ -9,7 +9,7 @@ COPY requirements.txt .
 COPY api.py .
 COPY server.py .
 # Copia config.json solo se esiste
-COPY ./config* .
+#COPY ./config* .
 
 # Installa le dipendenze
 RUN pip install --no-cache-dir -r requirements.txt

@@ -28,6 +28,9 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    configs:
+      - source: config_json
+        target: /app/config.json
     command: python api.py --print
 
   cli-cache:
@@ -38,6 +41,9 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    configs:
+      - source: config_json
+        target: /app/config.json
     command: python api.py --cache --print
 
   api:
@@ -50,6 +56,9 @@ services:
       - REDIS_PORT=6379
     ports:
       - "5005:80"
+    configs:
+      - source: config_json
+        target: /app/config.json
     command: python server.py
 
   frontend:
@@ -60,3 +69,7 @@ services:
       - api
     ports:
       - "5000:80"
+
+configs:
+  config_json:
+    file: ./backend/config.json
