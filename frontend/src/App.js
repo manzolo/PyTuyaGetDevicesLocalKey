@@ -69,7 +69,7 @@ function App() {
       return () => clearTimeout(timer); // Pulisci il timer se il componente viene smontato o se cambia il messaggio
     }
   }, [errorMessage]);
-  
+
   // Timer per nascondere il messaggio di errore
   useEffect(() => {
     if (infoMessage) {
@@ -81,59 +81,92 @@ function App() {
     }
   }, [infoMessage]);
 
+    const checkDeviceStatus = async (deviceId, localKey, privateIp) => {
+      //return "offline";
+      try {
+        const response = await axios.post("/api/check_device_status", {
+          device_id: deviceId,
+          local_key: localKey,
+          private_ip: privateIp,
+        });
+        return response.data.status;
+      } catch (error) {
+        console.error("Error checking device status:", error);
+        return "offline";
+      }
+    };
+
+    const handleToggleDevice = async (deviceId, localKey, privateIp, command) => {
+      try {
+        await axios.post("/api/toggle_device", {
+          device_id: deviceId,
+          local_key: localKey,
+          private_ip: privateIp,
+          command: command,
+        });
+        setInfoMessage(`Device turned ${command}`);
+        fetchDevices(); // Ricarica i dispositivi per aggiornare lo stato
+      } catch (error) {
+        setErrorMessage(`Error toggling device: ${error.message}`);
+      }
+    };
+
+      // Funzione asincrona per caricare i dispositivi
   const fetchDevices = async () => {
     setLoading(true);
     try {
       setErrorMessage("");
       const response = await axios.get("/api/get_devices");
-      setDevices(response.data);
+
+      // Carica gli stati dei dispositivi in parallelo
+      const devicesWithStatus = await Promise.all(
+        Object.entries(response.data).map(async ([id, data]) => {
+          const status = await checkDeviceStatus(id, data.local_key, data.private_ip);
+          return [id, { ...data, status }];
+        })
+      );
+
+      setDevices(Object.fromEntries(devicesWithStatus));
     } catch (error) {
-      console.error("Error retrieve devices info:", error);
-      if (error.response) {
-        setErrorMessage("Error retrieve devices info: " + error.response.data.error);
-      } else if (error.request) {
-        setErrorMessage("No response received: " + error.message);
-      } else {
-        setErrorMessage("Error: " + error.message);
-      }
+      console.error("Error retrieving devices info:", error);
+      setErrorMessage(
+        error.response
+          ? "Error retrieving devices info: " + error.response.data.error
+          : error.request
+          ? "No response received: " + error.message
+          : "Error: " + error.message
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-    const updateDevices = async () => {
-      setLoading(true); // Imposta lo stato di caricamento
-      setErrorMessage(""); // Resetta il messaggio di errore
-      setInfoMessage(""); // Resetta il messaggio informativo
+  // Funzione asincrona per aggiornare i dispositivi
+  const updateDevices = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    setInfoMessage("");
 
-      try {
-        // Effettua la chiamata POST
-        const response = await axios.post("/api/update_devices");
-
-        // Verifica che la risposta sia valida
-        if (response.status === 200) {
-          setInfoMessage("Update is complete!"); // Mostra un messaggio di successo
-        } else {
-          // Se la risposta non è 200, gestisci l'errore
-          setErrorMessage("Unexpected error: " + response.statusText);
-        }
-      } catch (error) {
-        console.error("Sync error:", error);
-
-        // Gestisci diversi tipi di errori
-        if (error.response) {
-          // Errore con risposta dal server (es. 4xx, 5xx)
-          setErrorMessage("Sync error: " + error.response.data.error);
-        } else if (error.request) {
-          // Nessuna risposta ricevuta (es. problemi di rete)
-          setErrorMessage("No server response: " + error.message);
-        } else {
-          // Errore generico (es. configurazione della richiesta)
-          setErrorMessage("Error: " + error.message);
-        }
-      } finally {
-        setLoading(false); // Disattiva lo stato di caricamento
+    try {
+      const response = await axios.post("/api/update_devices");
+      if (response.status === 200) {
+        setInfoMessage("Update is complete!");
+      } else {
+        setErrorMessage("Unexpected error: " + response.statusText);
       }
-    };
+    } catch (error) {
+      console.error("Sync error:", error);
+      setErrorMessage(
+        error.response
+          ? "Sync error: " + error.response.data.error
+          : error.request
+          ? "No server response: " + error.message
+          : "Error: " + error.message
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -204,7 +237,7 @@ function App() {
       {errorMessage && (
         <ErrorMessage message={errorMessage} onClose={() => setErrorMessage('')} />
       )}
-      
+
       {infoMessage && (
         <InfoMessage message={infoMessage} onClose={() => setInfoMessage('')} />
       )}
@@ -232,6 +265,8 @@ function App() {
                 <th className="border p-3 text-left cursor-pointer" onClick={() => handleSort('last_updated')}>
                   Last update {sortConfig.key === 'last_updated' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
                 </th>
+                <th className="border p-3 text-left">Status</th>
+                <th className="border p-3 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -243,6 +278,27 @@ function App() {
                   <td className="border p-3">{data.mac_address || "N/A"}</td>
                   <td className="border p-3">{data.private_ip || "N/A"}</td>
                   <td className="border p-3">{data.last_updated || "N/A"}</td>
+                  <td className="border p-3">
+                  {data.status === "online" ? (
+                    <span className="text-green-500">● Online</span>
+                  ) : (
+                    <span className="text-red-500">● Offline</span>
+                  )}
+                </td>
+                <td className="border p-3">
+                  <button
+                    onClick={() => handleToggleDevice(id, data.local_key, data.private_ip, "on")}
+                    className="px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  >
+                    On
+                  </button>
+                  <button
+                    onClick={() => handleToggleDevice(id, data.local_key, data.private_ip, "off")}
+                    className="ml-2 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                  >
+                    Off
+                  </button>
+                </td>
                 </tr>
               ))}
             </tbody>

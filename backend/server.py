@@ -1,4 +1,5 @@
-from flask import Flask, jsonify
+import tinytuya
+from flask import Flask, jsonify, request
 #from flask_cors import cross_origin
 from api import get_access_token, get_device_info, connect_to_redis
 import os
@@ -51,6 +52,47 @@ def update_devices():
 
     except Exception as e:
         print(f"Errore generico in update_devices: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/check_device_status", methods=["POST"])
+def check_device_status():
+    data = request.json
+    device_id = data.get("device_id")
+    local_key = data.get("local_key")
+    private_ip = data.get("private_ip")
+
+    try:
+        device = tinytuya.OutletDevice(device_id, private_ip, local_key)
+        device.set_version("3.3")  # Imposta la versione del protocollo
+        # Imposta un timeout di 1 secondo
+        device.set_socketTimeout(1.0)
+        status = device.status()
+
+        print(status)
+        return jsonify({"status": "online" if status.get("dps") else "offline"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/toggle_device", methods=["POST"])
+def toggle_device():
+    data = request.json
+    device_id = data.get("device_id")
+    local_key = data.get("local_key")
+    private_ip = data.get("private_ip")
+    command = True if data.get("command") == "on" else False # "on" o "off"
+
+    try:
+        # Invia il comando
+        device = tinytuya.OutletDevice(device_id, private_ip, local_key)
+        device.set_version("3.3")
+        payload = device.generate_payload(tinytuya.CONTROL, {"1": command})
+        response = device._send_receive(payload)
+
+        if response:
+            return jsonify({"message": f"Device turned {command}"}), 200
+        else:
+            return jsonify({"error": str(response)}), 500
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 configData = load_config()

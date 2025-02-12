@@ -268,6 +268,7 @@ def main(print_results=False, use_cache=False):
         access_token = get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, debug)
         get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, debug, print_results)
 
+
 if __name__ == "__main__":
     # Configura gli argomenti da riga di comando
     parser = argparse.ArgumentParser(description="Recupera i dati dei dispositivi Tuya.")
