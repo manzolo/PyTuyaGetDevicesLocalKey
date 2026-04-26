@@ -77,11 +77,18 @@ Device g573bb2ed4a2aa6099csmd:
 
 # Docker compose
 
+Le immagini sono pubblicate su GitHub Container Registry e vengono scaricate automaticamente:
+
+```bash
+docker compose up api frontend
 ```
+
+### Build locale (opzionale, per sviluppo)
+
+```bash
 docker compose build tuya-localkey-extractor-backend-image
 docker compose build tuya-localkey-extractor-frontend-image
 docker compose up api frontend
-
 ```
 ## Frontend
 Navigate to http://localhost:5000

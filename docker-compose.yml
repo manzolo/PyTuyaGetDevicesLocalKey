@@ -1,16 +1,16 @@
 services:
-  # Servizio per costruire l'immagine
+  # Servizi per build locale (opzionale, per sviluppo)
   tuya-localkey-extractor-backend-image:
     build:
       context: backend
       dockerfile: Dockerfile
-    image: tuya-localkey-extractor-backend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-backend:latest
 
   tuya-localkey-extractor-frontend-image:
     build:
       context: frontend
       dockerfile: Dockerfile
-    image: tuya-localkey-extractor-frontend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-frontend:latest
 
   redis:
     image: redis:latest
@@ -21,7 +21,7 @@ services:
       - ./redis_data:/data
 
   cli:
-    image: tuya-localkey-extractor-backend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-cli
     depends_on:
       - redis
@@ -34,7 +34,7 @@ services:
     command: python api.py --print
 
   cli-cache:
-    image: tuya-localkey-extractor-backend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-cli-cache
     depends_on:
       - redis
@@ -47,7 +47,7 @@ services:
     command: python api.py --cache --print
 
   api:
-    image: tuya-localkey-extractor-backend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-backend:latest
     container_name: py-tuya-localkey-extractor-api
     depends_on:
       - redis
@@ -62,7 +62,7 @@ services:
     command: python server.py
 
   frontend:
-    image: tuya-localkey-extractor-frontend:latest
+    image: ghcr.io/manzolo/tuya-localkey-extractor-frontend:latest
     container_name: py-tuya-localkey-extractor-frontend
     depends_on:
       - redis
