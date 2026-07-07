@@ -13,6 +13,70 @@ import argparse  # Aggiungi questa importazione
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
+# TTL di default (secondi) oltre il quale un dato di discovery e' considerato stale
+DEFAULT_DISCOVERY_TTL = 900
+
+
+def _decode_hash(raw):
+    out = {}
+    for k, v in raw.items():
+        k = k.decode("utf-8") if isinstance(k, bytes) else k
+        v = v.decode("utf-8") if isinstance(v, bytes) else v
+        out[k] = v
+    return out
+
+
+def get_local_discovery(redis_client, device_id):
+    """Legge il record di discovery locale ('discovery:<id>') da Redis."""
+    if not redis_client:
+        return None
+    try:
+        raw = redis_client.hgetall(f"discovery:{device_id}")
+    except Exception:
+        return None
+    if not raw:
+        return None
+    return _decode_hash(raw)
+
+
+def apply_local_network_info(redis_client, device_id, data, discovery_ttl=DEFAULT_DISCOVERY_TTL):
+    """
+    Sovrascrive private_ip / mac_address di `data` con i valori AUTORITATIVI
+    ottenuti dalla discovery locale (Redis 'discovery:<id>'), se ancora freschi.
+
+    Il cloud Tuya non e' affidabile per IP/MAC (li scambia tra device doppioni):
+    qui ci si fida solo di discovery UDP (IP) + Pi-hole/ARP (MAC).
+
+    Imposta i flag 'ip_stale' / 'mac_stale' (stringhe "true"/"false") e 'mac_source'.
+    `data` deve gia' contenere i valori di fallback (config/cloud), usati se la
+    discovery e' assente o troppo vecchia.
+    """
+    disc = get_local_discovery(redis_client, device_id)
+    fresh = False
+    if disc and disc.get("last_seen"):
+        try:
+            fresh = (time.time() - float(disc["last_seen"])) <= discovery_ttl
+        except (ValueError, TypeError):
+            fresh = False
+
+    if fresh and disc.get("ip"):
+        data["private_ip"] = disc["ip"]
+        data["ip_stale"] = "false"
+        if disc.get("mac"):
+            data["mac_address"] = disc["mac"]
+            data["mac_stale"] = "false"
+            data["mac_source"] = disc.get("mac_source", "")
+        else:
+            # IP fresco ma MAC non risolto: teniamo il MAC di fallback ma lo segnaliamo
+            data["mac_stale"] = "true"
+            data["mac_source"] = ""
+    else:
+        # discovery assente/stale: mostriamo comunque il dato di fallback ma segnalato
+        data["ip_stale"] = "true"
+        data["mac_stale"] = "true"
+        data["mac_source"] = ""
+    return data
+
 def get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, debug=False):
     try:
         URL = "/v1.0/token?grant_type=1"
@@ -79,7 +143,7 @@ def get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime
         print(f"Errore imprevisto: {e}")
         raise  # Rilancia l'eccezione per gestirla a livello superiore
 
-def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, AccessToken, deviceList, redis_client, debug=False, print_results=False):
+def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, AccessToken, deviceList, redis_client, debug=False, print_results=False, discovery_ttl=DEFAULT_DISCOVERY_TTL):
     try:
         device_ids = list(deviceList.keys())
         chunk_size = 20
@@ -131,24 +195,32 @@ def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime,
                 model = device_info.get("model")
                 name = device_info.get("name")
                 product_id = device_info.get("product_id")
+                # Valori di FALLBACK statici da config (usati solo se la discovery
+                # locale e' assente/stale). NON sono affidabili di per se'.
                 private_ip = deviceList.get(id, {}).get("private_ip", "N/A")
                 mac_address = deviceList.get(id, {}).get("mac_address", "N/A")
                 last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+                entry = {
+                    "local_key": localKey,
+                    "custom_name": customName,
+                    "ip": ip,                    # IP dal cloud: inaffidabile, tenuto solo per debug
+                    "is_online": is_online,
+                    "model": model,
+                    "name": name,
+                    "product_id": product_id,
+                    "private_ip": private_ip,    # fallback config -> sovrascritto da discovery
+                    "mac_address": mac_address,  # fallback config -> sovrascritto da Pi-hole/ARP
+                    "last_updated": last_updated,
+                }
+                # NON fidarsi di IP/MAC del cloud: usa la discovery locale autoritativa
+                apply_local_network_info(redis_client, id, entry, discovery_ttl)
+                # Redis non accetta valori None
+                entry = {k: ("" if v is None else v) for k, v in entry.items()}
+
                 if redis_client:
                     try:
-                        redis_client.hset(f"{id}", mapping={
-                            "local_key": localKey,
-                            "custom_name": customName,
-                            "ip": ip,
-                            "is_online": is_online,
-                            "model": model,
-                            "name": name,
-                            "product_id": product_id,
-                            "private_ip": private_ip,
-                            "mac_address": mac_address,
-                            "last_updated": last_updated
-                        })
+                        redis_client.hset(f"{id}", mapping=entry)
                         if debug:
                             print(f"Dispositivo {id} salvato in Redis.")
                     except Exception as redis_error:
@@ -163,8 +235,11 @@ def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime,
                     print(f"  Model: {model}")
                     print(f"  Name: {name}")
                     print(f"  Product ID: {product_id}")
-                    print(f"  Private IP: {private_ip}")
-                    print(f"  MAC Address: {mac_address}")
+                    ip_note = " (stale)" if entry.get("ip_stale") == "true" else ""
+                    mac_note = " (stale)" if entry.get("mac_stale") == "true" else \
+                        f" [{entry.get('mac_source')}]" if entry.get("mac_source") else ""
+                    print(f"  Private IP: {entry['private_ip']}{ip_note}")
+                    print(f"  MAC Address: {entry['mac_address']}{mac_note}")
                     print(f"  Last Updated: {last_updated}")
                     print("-" * 40)
 
@@ -189,7 +264,7 @@ def get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime,
         print(f"Unexpected error on get_device_info: {e}")
         raise  # Rilancia l'eccezione per gestirla a livello superiore
 
-def get_redis_cached_data(redis_client, device_id=None):
+def get_redis_cached_data(redis_client, device_id=None, discovery_ttl=DEFAULT_DISCOVERY_TTL):
     """
     Recupera i dati memorizzati in Redis per uno o tutti i dispositivi.
 
@@ -211,15 +286,21 @@ def get_redis_cached_data(redis_client, device_id=None):
             # Recupera i dati per un dispositivo specifico
             data = redis_client.hgetall(device_id)
             if data:
-                return {device_id: {k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()}}
+                decoded = _decode_hash(data)
+                apply_local_network_info(redis_client, device_id, decoded, discovery_ttl)
+                return {device_id: decoded}
             else:
                 return {}
         else:
-            # Recupera i dati per tutti i dispositivi
+            # Recupera i dati per tutti i dispositivi (escluse le chiavi di discovery)
             devices = {}
             for key in redis_client.keys("*"):
-                data = redis_client.hgetall(key)
-                devices[key.decode("utf-8")] = {k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()}
+                key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                if key_str.startswith("discovery:"):
+                    continue
+                decoded = _decode_hash(redis_client.hgetall(key))
+                apply_local_network_info(redis_client, key_str, decoded, discovery_ttl)
+                devices[key_str] = decoded
             return devices
     except Exception as e:
         logger.error(f"Errore durante il recupero dei dati da Redis: {e}")
@@ -246,6 +327,7 @@ def main(print_results=False, use_cache=False):
     ClientSecret = configData["ClientSecret"]
     BaseUrl = configData["BaseUrl"]
     deviceList = configData["deviceList"]
+    discovery_ttl = int(configData.get("DiscoveryTTL", DEFAULT_DISCOVERY_TTL))
     EmptyBodyEncoded = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     tuyatime = str(int(time.time()) * 1000)
 
@@ -256,7 +338,7 @@ def main(print_results=False, use_cache=False):
 
     if use_cache:
         # Recupera i dati da Redis
-        cached_data = get_redis_cached_data(redis_client)
+        cached_data = get_redis_cached_data(redis_client, discovery_ttl=discovery_ttl)
         if print_results:
             for device_id, data in cached_data.items():
                 print(f"Device {device_id}:")
@@ -266,7 +348,7 @@ def main(print_results=False, use_cache=False):
     else:
         # Recupera i dati dall'API
         access_token = get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, debug)
-        get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, debug, print_results)
+        get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, debug, print_results, discovery_ttl)
 
 if __name__ == "__main__":
     # Configura gli argomenti da riga di comando

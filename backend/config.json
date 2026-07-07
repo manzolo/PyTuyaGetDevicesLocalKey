@@ -3,6 +3,17 @@
   "ClientSecret": "<<CLIENT_SECRET>>",
   "BaseUrl": "https://openapi.tuyaeu.com",
   "Debug" :"True",
+
+  "_comment_discovery": "IP e MAC NON vengono presi dal cloud (inaffidabili per i device doppioni). Il servizio 'discovery' (network host) li ricava da UDP Tuya (IP) e Pi-hole/ARP (MAC) e li scrive in Redis. I valori in deviceList sono solo fallback usati se un device e' offline/non scoperto (mostrati come 'stale').",
+  "DiscoveryInterval": 90,
+  "DiscoveryScanTimeout": 8,
+  "DiscoveryTTL": 900,
+  "Pihole": {
+    "BaseUrl": "https://pi-hole.lan",
+    "Password": "<<PIHOLE_PASSWORD>>",
+    "VerifyTls": false
+  },
+
   "deviceList":{"device1_id": {"friendly_name":"custom name device1","private_ip": "192.168.1.254", "mac_address": "AA:BB:CC:DD:EE:FF"},
               "device2_id": {"optional_key":"optional value for device1"},
               "device3_id": {}}

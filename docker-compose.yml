@@ -61,6 +61,23 @@ services:
         target: /app/config.json
     command: python server.py
 
+  # Discovery locale autoritativa di IP (UDP Tuya) e MAC (Pi-hole/ARP).
+  # Richiede --network host per ricevere i broadcast Tuya e leggere la tabella ARP.
+  discovery:
+    image: ghcr.io/manzolo/tuya-localkey-extractor-backend:latest
+    container_name: py-tuya-localkey-extractor-discovery
+    depends_on:
+      - redis
+    network_mode: host
+    environment:
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PORT=6379
+    configs:
+      - source: config_json
+        target: /app/config.json
+    command: python local_resolve.py
+    restart: always
+
   frontend:
     image: ghcr.io/manzolo/tuya-localkey-extractor-frontend:latest
     container_name: py-tuya-localkey-extractor-frontend

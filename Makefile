@@ -5,14 +5,14 @@ DOCKER_COMPOSE := docker compose
 # Target to start the containers
 start:
 	@echo "Restarting $(DOCKER_COMPOSE) containers..."
-	$(DOCKER_COMPOSE) up api frontend --remove-orphans -d
+	$(DOCKER_COMPOSE) up api frontend discovery --remove-orphans -d
 
 # Target to restart the containers
 restart:
 	@echo "Restarting $(DOCKER_COMPOSE) containers..."
 	$(DOCKER_COMPOSE) down
 	$(DOCKER_COMPOSE) rm -f
-	$(DOCKER_COMPOSE) up api frontend --remove-orphans -d
+	$(DOCKER_COMPOSE) up api frontend discovery --remove-orphans -d
 
 # Target to start the cli container
 cli:

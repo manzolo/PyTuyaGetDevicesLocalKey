@@ -8,6 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 COPY api.py .
 COPY server.py .
+COPY local_resolve.py .
 # Copia config.json solo se esiste
 #COPY ./config* .
 
