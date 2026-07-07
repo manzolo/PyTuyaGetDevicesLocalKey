@@ -240,8 +240,26 @@ function App() {
                   <td className="border p-3">{data.custom_name || "N/A"}</td>
                   <td className="border p-3">{id}</td>
                   <td className="border p-3">{data.local_key}</td>
-                  <td className="border p-3">{data.mac_address || "N/A"}</td>
-                  <td className="border p-3">{data.private_ip || "N/A"}</td>
+                  <td
+                    className={"border p-3 " + (data.mac_stale === "true" ? "text-gray-400 italic" : "")}
+                    title={
+                      data.mac_stale === "true"
+                        ? "stale: MAC non confermato dalla discovery locale (dato di fallback dal config)"
+                        : (data.mac_source ? "fonte: " + data.mac_source : "")
+                    }
+                  >
+                    {data.mac_address || "N/A"}{data.mac_stale === "true" ? " (stale)" : ""}
+                  </td>
+                  <td
+                    className={"border p-3 " + (data.ip_stale === "true" ? "text-gray-400 italic" : "")}
+                    title={
+                      data.ip_stale === "true"
+                        ? "stale: device non raggiungibile dalla discovery UDP locale (dato di fallback dal config)"
+                        : "fonte: discovery UDP Tuya locale"
+                    }
+                  >
+                    {data.private_ip || "N/A"}{data.ip_stale === "true" ? " (stale)" : ""}
+                  </td>
                   <td className="border p-3">{data.last_updated || "N/A"}</td>
                 </tr>
               ))}

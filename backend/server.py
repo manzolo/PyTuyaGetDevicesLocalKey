@@ -1,6 +1,13 @@
 from flask import Flask, jsonify
 #from flask_cors import cross_origin
-from api import get_access_token, get_device_info, connect_to_redis
+from api import (
+    get_access_token,
+    get_device_info,
+    connect_to_redis,
+    apply_local_network_info,
+    _decode_hash,
+    DEFAULT_DISCOVERY_TTL,
+)
 import os
 import json
 import time
@@ -23,8 +30,14 @@ def get_devices():
 
     devices = {}
     for key in redis_client.keys("*"):
-        data = redis_client.hgetall(key)
-        devices[key.decode()] = {k.decode(): v.decode() for k, v in data.items()}
+        key_str = key.decode()
+        # le chiavi 'discovery:<id>' sono dati interni, non dispositivi da mostrare
+        if key_str.startswith("discovery:"):
+            continue
+        data = _decode_hash(redis_client.hgetall(key))
+        # sovrascrive IP/MAC con i dati locali autoritativi (freschezza valutata ora)
+        apply_local_network_info(redis_client, key_str, data, DISCOVERY_TTL)
+        devices[key_str] = data
 
     return jsonify(devices)
 
@@ -42,7 +55,7 @@ def update_devices():
         # Chiamata a get_device_info con gestione degli errori
         try:
             access_token = get_access_token(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, DEBUG)
-            get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, DEBUG)
+            get_device_info(ClientID, ClientSecret, BaseUrl, EmptyBodyEncoded, tuyatime, access_token, deviceList, redis_client, DEBUG, False, DISCOVERY_TTL)
         except Exception as e:
             print(f"Errore durante l'aggiornamento dei dispositivi: {e}")
             return jsonify({"error": str(e)}), 500
@@ -58,6 +71,7 @@ ClientID = configData["ClientID"]
 ClientSecret = configData["ClientSecret"]
 BaseUrl = configData["BaseUrl"]
 deviceList = configData["deviceList"]
+DISCOVERY_TTL = int(configData.get("DiscoveryTTL", DEFAULT_DISCOVERY_TTL))
 EmptyBodyEncoded = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 DEBUG = configData.get("Debug", "false").lower() in ("true", "1", "t", "yes")
 
